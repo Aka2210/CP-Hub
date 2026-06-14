@@ -14,5 +14,4 @@ class Settings(BaseSettings):
     database_url: str = Field(default="sqlite+aiosqlite:///data/cphub.db", validation_alias="DATABASE_URL")
 
 
-# 實例化
 settings = Settings()

@@ -48,11 +48,12 @@ class LeetCodeBot(commands.Cog):
 
             color_map = {"EASY": discord.Color.green(), "MEDIUM": discord.Color.orange(), "HARD": discord.Color.red()}
             card_color = color_map.get(difficulty.value, discord.Color.blue())
-            embed = discord.Embed(title=f"抽到的題目：{problem['title']}", url=problem["url"], color=card_color)
+            embed = discord.Embed(title=f"{problem['title']}", url=problem["url"], color=card_color)
             embed.set_thumbnail(url="attachment://solution.png")
             embed.add_field(name="題目編號", value=problem["questionFrontendId"], inline=True)
             embed.add_field(name="難度", value=difficulty.name, inline=True)
             embed.add_field(name="分類標籤", value=tag.name, inline=True)
+            embed.add_field(name="抽題者", value=interaction.user.mention, inline=True)
 
             file = discord.File(SOLUTION_THUMBNAIL_PATH, filename="solution.png")
             await interaction.followup.send(embed=embed, file=file)
