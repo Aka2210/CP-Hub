@@ -23,11 +23,7 @@ class MentionChat(commands.Cog):
         if message.author == self.bot.user:
             return
         if self.bot.user in message.mentions and not message.mention_everyone:
-            clean_content = (
-                message.content.replace(f"<@!{self.bot.user.id}>", "")
-                .replace(f"<@{self.bot.user.id}>", "")
-                .strip()
-            )
+            clean_content = message.content.replace(f"<@!{self.bot.user.id}>", "").replace(f"<@{self.bot.user.id}>", "").strip()
 
             if not clean_content:
                 await message.reply("你標我然後什麼話都不說，丘比生氣了")

@@ -44,13 +44,9 @@ async def setup_hook():
 
         try:
             await bot.load_extension(module_name)
-            print(
-                f"[{Color.GREEN} OK {Color.RESET}] Loaded module: {Color.PURPLE}{filepath.stem}{Color.RESET}"
-            )
+            print(f"[{Color.GREEN} OK {Color.RESET}] Loaded module: {Color.PURPLE}{filepath.stem}{Color.RESET}")
         except Exception as e:
-            print(
-                f"[{Color.RED}FAILED{Color.RESET}] Module {Color.YELLOW}{filepath.stem}{Color.RESET} failed to load!"
-            )
+            print(f"[{Color.RED}FAILED{Color.RESET}] Module {Color.YELLOW}{filepath.stem}{Color.RESET} failed to load!")
             print(f"       └─ Reason: {Color.RED}{str(e)}{Color.RESET}")
 
     print(f"{Color.GREEN}All modules loaded dynamically, bot is ready!{Color.RESET}")
