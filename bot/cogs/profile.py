@@ -1,0 +1,93 @@
+import asyncio
+
+import discord
+from discord import app_commands
+from discord.ext import commands
+
+from backend.app.core.db import AsyncSessionLocal
+from backend.app.crud.user import get_user_by_discord_id
+from backend.app.services.atcoder.client import AtCoderService
+from backend.app.services.codeforces.client import CodeforcesService
+from backend.app.services.leetcode.client import LeetCodeService
+
+
+class Profile(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self.leetcode_service = LeetCodeService()
+        self.codeforces_service = CodeforcesService()
+        self.atcoder_service = AtCoderService()
+
+    @app_commands.command(name="profile", description="View your CP-Hub profile card.")
+    async def profile(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+
+        async with AsyncSessionLocal() as session:
+            user = await get_user_by_discord_id(session, interaction.user.id)
+
+            if user is None:
+                await interaction.followup.send("尚未建立帳號資料，請先使用 `/link leetcode <username>` 連結帳號。")
+                return
+
+            level = user.stats.level
+            coins = user.stats.coins
+            leetcode_id = user.leetcode_id
+            codeforces_id = user.codeforces_id
+            atcoder_id = user.atcoder_id
+
+        leetcode_field, codeforces_field, atcoder_field = await asyncio.gather(
+            self._leetcode_field(leetcode_id),
+            self._codeforces_field(codeforces_id),
+            self._atcoder_field(atcoder_id),
+        )
+
+        embed = discord.Embed(title=f"{interaction.user.display_name} 的個人檔案", color=discord.Color.gold())
+        embed.set_thumbnail(url=interaction.user.display_avatar.url)
+        embed.add_field(name="等級", value=str(level), inline=True)
+        embed.add_field(name="金幣", value=str(coins), inline=True)
+        embed.add_field(name="​", value="​", inline=True)
+        embed.add_field(name="LeetCode", value=leetcode_field, inline=True)
+        embed.add_field(name="Codeforces", value=codeforces_field, inline=True)
+        embed.add_field(name="AtCoder", value=atcoder_field, inline=True)
+
+        await interaction.followup.send(embed=embed)
+
+    async def _leetcode_field(self, leetcode_id: str | None) -> str:
+        if leetcode_id is None:
+            return "未連結"
+
+        try:
+            stats = await self.leetcode_service.get_solved_stats(leetcode_id)
+        except RuntimeError:
+            return "讀取失敗"
+
+        if stats is None:
+            return "讀取失敗"
+
+        return f"Easy: {stats['easy']}\nMedium: {stats['medium']}\nHard: {stats['hard']}"
+
+    async def _codeforces_field(self, codeforces_id: str | None) -> str:
+        if codeforces_id is None:
+            return "未連結"
+
+        try:
+            rating = await self.codeforces_service.get_rating(codeforces_id)
+        except RuntimeError:
+            return "讀取失敗"
+
+        return str(rating) if rating is not None else "Unrated"
+
+    async def _atcoder_field(self, atcoder_id: str | None) -> str:
+        if atcoder_id is None:
+            return "未連結"
+
+        try:
+            rating = await self.atcoder_service.get_rating(atcoder_id)
+        except RuntimeError:
+            return "讀取失敗"
+
+        return str(rating) if rating is not None else "Unrated"
+
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(Profile(bot))

@@ -1,7 +1,7 @@
 import pytest
 
 from backend.app.core.db import AsyncSessionLocal
-from backend.app.crud.user import LeetCodeIDAlreadyLinkedError, get_user_by_discord_id, upsert_leetcode_link
+from backend.app.crud.user import AccountIDAlreadyLinkedError, get_user_by_discord_id, upsert_account_links
 
 DISCORD_ID_A = 900000000000000001
 DISCORD_ID_B = 900000000000000002
@@ -28,37 +28,54 @@ async def test_get_user_by_discord_id_not_found():
 
 
 @pytest.mark.asyncio
-async def test_upsert_leetcode_link_creates_user():
+async def test_upsert_account_links_creates_user():
     async with AsyncSessionLocal() as session:
-        user = await upsert_leetcode_link(session, discord_id=DISCORD_ID_A, username="test_user_a", leetcode_id="neal_wu")
+        user = await upsert_account_links(session, discord_id=DISCORD_ID_A, username="test_user_a", leetcode_id="neal_wu")
 
         assert user.discord_id == DISCORD_ID_A
         assert user.leetcode_id == "neal_wu"
+        assert user.codeforces_id is None
+        assert user.atcoder_id is None
         assert user.stats.level == 1
         assert user.stats.coins == 0
 
 
 @pytest.mark.asyncio
-async def test_upsert_leetcode_link_updates_existing_user():
+async def test_upsert_account_links_adds_to_existing_user_without_overwriting():
     async with AsyncSessionLocal() as session:
-        await upsert_leetcode_link(session, discord_id=DISCORD_ID_A, username="test_user_a", leetcode_id="neal_wu")
-
-    async with AsyncSessionLocal() as session:
-        user = await upsert_leetcode_link(session, discord_id=DISCORD_ID_A, username="test_user_a", leetcode_id="votrubac")
-
-        assert user.leetcode_id == "votrubac"
+        await upsert_account_links(session, discord_id=DISCORD_ID_A, username="test_user_a", leetcode_id="neal_wu")
 
     async with AsyncSessionLocal() as session:
-        user = await get_user_by_discord_id(session, DISCORD_ID_A)
+        user = await upsert_account_links(session, discord_id=DISCORD_ID_A, username="test_user_a", codeforces_id="tourist")
 
-        assert user.leetcode_id == "votrubac"
+        assert user.leetcode_id == "neal_wu"
+        assert user.codeforces_id == "tourist"
 
 
 @pytest.mark.asyncio
-async def test_upsert_leetcode_link_rejects_duplicate_leetcode_id():
+async def test_upsert_account_links_with_multiple_accounts_at_once():
     async with AsyncSessionLocal() as session:
-        await upsert_leetcode_link(session, discord_id=DISCORD_ID_A, username="test_user_a", leetcode_id="neal_wu")
+        user = await upsert_account_links(
+            session,
+            discord_id=DISCORD_ID_A,
+            username="test_user_a",
+            leetcode_id="neal_wu",
+            codeforces_id="tourist",
+            atcoder_id="tourist",
+        )
+
+        assert user.leetcode_id == "neal_wu"
+        assert user.codeforces_id == "tourist"
+        assert user.atcoder_id == "tourist"
+
+
+@pytest.mark.asyncio
+async def test_upsert_account_links_rejects_duplicate_account_id():
+    async with AsyncSessionLocal() as session:
+        await upsert_account_links(session, discord_id=DISCORD_ID_A, username="test_user_a", leetcode_id="neal_wu")
 
     async with AsyncSessionLocal() as session:
-        with pytest.raises(LeetCodeIDAlreadyLinkedError):
-            await upsert_leetcode_link(session, discord_id=DISCORD_ID_B, username="test_user_b", leetcode_id="neal_wu")
+        with pytest.raises(AccountIDAlreadyLinkedError) as exc_info:
+            await upsert_account_links(session, discord_id=DISCORD_ID_B, username="test_user_b", leetcode_id="neal_wu")
+
+    assert exc_info.value.conflicts == {"leetcode_id": "neal_wu"}

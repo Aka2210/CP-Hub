@@ -55,3 +55,19 @@ async def test_user_exists_for_real_user(leetcode_service):
 @pytest.mark.asyncio
 async def test_user_exists_for_nonexistent_user(leetcode_service):
     assert await leetcode_service.user_exists("this-user-definitely-does-not-exist-12345") is False
+
+
+@pytest.mark.asyncio
+async def test_get_solved_stats_for_real_user(leetcode_service):
+    stats = await leetcode_service.get_solved_stats("neal_wu")
+
+    assert stats is not None
+    assert stats.keys() == {"easy", "medium", "hard"}
+    assert all(count >= 0 for count in stats.values())
+
+
+@pytest.mark.asyncio
+async def test_get_solved_stats_for_nonexistent_user(leetcode_service):
+    stats = await leetcode_service.get_solved_stats("this-user-definitely-does-not-exist-12345")
+
+    assert stats is None

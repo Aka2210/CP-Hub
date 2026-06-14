@@ -1,52 +1,82 @@
+import asyncio
+
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from backend.app.core.db import AsyncSessionLocal
-from backend.app.crud.user import LeetCodeIDAlreadyLinkedError, upsert_leetcode_link
+from backend.app.crud.user import AccountIDAlreadyLinkedError, upsert_account_links
+from backend.app.services.atcoder.client import AtCoderService
+from backend.app.services.codeforces.client import CodeforcesService
 from backend.app.services.leetcode.client import LeetCodeService
 
-
-class LinkGroup(app_commands.Group):
-    def __init__(self, leetcode_service: LeetCodeService):
-        super().__init__(name="link", description="Link your competitive programming accounts.")
-        self.leetcode_service = leetcode_service
-
-    @app_commands.command(name="leetcode", description="Link your LeetCode account to your Discord account.")
-    @app_commands.describe(username="Your LeetCode username")
-    async def leetcode(self, interaction: discord.Interaction, username: str):
-        await interaction.response.defer(ephemeral=True)
-
-        try:
-            if not await self.leetcode_service.user_exists(username):
-                await interaction.followup.send(f"找不到 LeetCode 帳號 `{username}`，請確認帳號名稱是否正確。")
-                return
-
-            async with AsyncSessionLocal() as session:
-                try:
-                    await upsert_leetcode_link(
-                        session,
-                        discord_id=interaction.user.id,
-                        username=interaction.user.name,
-                        leetcode_id=username,
-                    )
-                except LeetCodeIDAlreadyLinkedError:
-                    await interaction.followup.send(f"LeetCode 帳號 `{username}` 已被其他使用者連結。")
-                    return
-
-            await interaction.followup.send(f"已成功將 LeetCode 帳號 `{username}` 連結到你的 Discord 帳號！")
-        except Exception as exc:
-            await interaction.followup.send(f"連結失敗：{exc}")
+PLATFORM_NAMES = {"leetcode_id": "LeetCode", "codeforces_id": "Codeforces", "atcoder_id": "AtCoder"}
 
 
 class Account(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.link_group = LinkGroup(LeetCodeService())
-        bot.tree.add_command(self.link_group)
+        self.leetcode_service = LeetCodeService()
+        self.codeforces_service = CodeforcesService()
+        self.atcoder_service = AtCoderService()
 
-    async def cog_unload(self):
-        self.bot.tree.remove_command(self.link_group.name)
+    @app_commands.command(name="link", description="Link your competitive programming accounts (fill in at least one).")
+    @app_commands.describe(
+        leetcode="Your LeetCode username",
+        codeforces="Your Codeforces handle",
+        atcoder="Your AtCoder username",
+    )
+    async def link(
+        self,
+        interaction: discord.Interaction,
+        leetcode: str | None = None,
+        codeforces: str | None = None,
+        atcoder: str | None = None,
+    ):
+        accounts = {"leetcode_id": leetcode, "codeforces_id": codeforces, "atcoder_id": atcoder}
+        provided = [(field, value) for field, value in accounts.items() if value is not None]
+
+        if not provided:
+            await interaction.response.send_message("請至少填寫一個帳號：leetcode、codeforces 或 atcoder。", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            exists_results = await asyncio.gather(*(self._user_exists(field, value) for field, value in provided))
+
+            not_found = [f"{PLATFORM_NAMES[field]} `{value}`" for (field, value), exists in zip(provided, exists_results) if not exists]
+
+            if not_found:
+                await interaction.followup.send(f"找不到以下帳號，請確認名稱是否正確：{', '.join(not_found)}")
+                return
+
+            async with AsyncSessionLocal() as session:
+                try:
+                    await upsert_account_links(
+                        session,
+                        discord_id=interaction.user.id,
+                        username=interaction.user.name,
+                        leetcode_id=leetcode,
+                        codeforces_id=codeforces,
+                        atcoder_id=atcoder,
+                    )
+                except AccountIDAlreadyLinkedError as exc:
+                    taken = [f"{PLATFORM_NAMES[field]} `{value}`" for field, value in exc.conflicts.items()]
+                    await interaction.followup.send(f"以下帳號已被其他使用者連結：{', '.join(taken)}")
+                    return
+
+            linked = [f"{PLATFORM_NAMES[field]}: `{value}`" for field, value in provided]
+            await interaction.followup.send("已成功更新帳號連結：\n" + "\n".join(linked))
+        except Exception as exc:
+            await interaction.followup.send(f"連結失敗：{exc}")
+
+    async def _user_exists(self, field: str, value: str) -> bool:
+        if field == "leetcode_id":
+            return await self.leetcode_service.user_exists(value)
+        if field == "codeforces_id":
+            return await self.codeforces_service.user_exists(value)
+        return await self.atcoder_service.user_exists(value)
 
 
 async def setup(bot: commands.Bot):

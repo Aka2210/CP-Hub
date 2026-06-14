@@ -23,3 +23,18 @@ query getUserProfile($username: String!) {
   }
 }
 """
+
+# Get the number of problems a user has solved, grouped by difficulty
+LEETCODE_USER_SOLVED_STATS_QUERY = """
+query getUserProfile($username: String!) {
+  matchedUser(username: $username) {
+    username
+    submitStatsGlobal {
+      acSubmissionNum {
+        difficulty
+        count
+      }
+    }
+  }
+}
+"""

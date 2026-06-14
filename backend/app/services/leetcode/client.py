@@ -3,7 +3,11 @@ from typing import Any, Dict, List
 
 import httpx
 
-from backend.app.services.leetcode.queries import LEETCODE_PROBLEM_LIST_QUERY, LEETCODE_USER_PROFILE_QUERY
+from backend.app.services.leetcode.queries import (
+    LEETCODE_PROBLEM_LIST_QUERY,
+    LEETCODE_USER_PROFILE_QUERY,
+    LEETCODE_USER_SOLVED_STATS_QUERY,
+)
 
 
 class LeetCodeService:
@@ -95,6 +99,36 @@ class LeetCodeService:
 
             except httpx.RequestError as exc:
                 raise RuntimeError(f"Error occurred while checking LeetCode user: {exc}")
+
+    async def get_solved_stats(self, username: str) -> Dict[str, int] | None:
+        """Fetches the number of solved problems per difficulty for the given LeetCode user."""
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(
+                    self.graphql_url,
+                    json={"query": LEETCODE_USER_SOLVED_STATS_QUERY, "variables": {"username": username}},
+                    headers=self.headers,
+                    timeout=10.0,
+                )
+
+                if response.status_code != 200:
+                    raise httpx.HTTPStatusError(
+                        f"LeetCode server returned error: {response.status_code}",
+                        request=response.request,
+                        response=response,
+                    )
+
+                data = response.json()
+                matched_user = (data.get("data") or {}).get("matchedUser")
+
+                if matched_user is None:
+                    return None
+
+                counts = {item["difficulty"]: item["count"] for item in matched_user["submitStatsGlobal"]["acSubmissionNum"]}
+                return {"easy": counts.get("Easy", 0), "medium": counts.get("Medium", 0), "hard": counts.get("Hard", 0)}
+
+            except httpx.RequestError as exc:
+                raise RuntimeError(f"Error occurred while fetching LeetCode solved stats: {exc}")
 
     async def draw_random_problem(self, tags: List[str], difficulty: str) -> Dict[str, Any]:
         """Draws a random LeetCode problem based on specified tags and difficulty, ensuring it's free to access."""
