@@ -9,6 +9,7 @@ from backend.app.crud.user import get_user_by_discord_id
 from backend.app.services.atcoder.client import AtCoderService
 from backend.app.services.codeforces.client import CodeforcesService
 from backend.app.services.leetcode.client import LeetCodeService
+from backend.app.services.level import exp_progress
 
 
 class Profile(commands.Cog):
@@ -30,6 +31,7 @@ class Profile(commands.Cog):
                 return
 
             level = user.stats.level
+            exp = user.stats.exp
             coins = user.stats.coins
             leetcode_id = user.leetcode_id
             codeforces_id = user.codeforces_id
@@ -41,6 +43,11 @@ class Profile(commands.Cog):
             self._atcoder_field(atcoder_id),
         )
 
+        current_exp, needed_exp, _ = exp_progress(exp)
+        filled = round(current_exp / needed_exp * 10)
+        bar = "█" * filled + "░" * (10 - filled)
+        pct = int(current_exp / needed_exp * 100)
+
         embed = discord.Embed(title=f"{interaction.user.display_name} 的個人檔案", color=discord.Color.gold())
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
         embed.add_field(name="等級", value=str(level), inline=True)
@@ -49,6 +56,11 @@ class Profile(commands.Cog):
         embed.add_field(name="LeetCode", value=leetcode_field, inline=True)
         embed.add_field(name="Codeforces", value=codeforces_field, inline=True)
         embed.add_field(name="AtCoder", value=atcoder_field, inline=True)
+        embed.add_field(
+            name=f"經驗值　Lv.{level} → Lv.{level + 1}",
+            value=f"`{bar}` {current_exp} / {needed_exp} EXP　（{pct}%）",
+            inline=False,
+        )
 
         await interaction.followup.send(embed=embed)
 

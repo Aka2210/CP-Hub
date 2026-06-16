@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.user_stage_progress import UserStageProgress
 from backend.app.models.user_stats import UserStats
+from backend.app.services.level import level_from_exp
 
 
 async def get_progress(session: AsyncSession, user_id: uuid.UUID, stage_id: int) -> UserStageProgress | None:
@@ -45,4 +46,5 @@ async def complete_stage(session: AsyncSession, progress: UserStageProgress) -> 
 async def award_rewards(session: AsyncSession, stats: UserStats, exp: int, coins: int) -> None:
     stats.exp += exp
     stats.coins += coins
+    stats.level = level_from_exp(stats.exp)
     await session.commit()

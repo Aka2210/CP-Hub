@@ -263,7 +263,7 @@ class StageCog(commands.Cog):
     # ── Admin commands ─────────────────────────────────────────────────────
 
     @admin_group.command(name="create", description="新增關卡")
-    @app_commands.describe(name="關卡名稱", rewards_exp="完關 EXP 獎勵", rewards_coins="完關金幣獎勵")
+    @app_commands.describe(name="關卡名稱", rewards_exp="完成關卡 EXP 獎勵", rewards_coins="完成關卡金幣獎勵")
     async def admin_create(
         self, interaction: discord.Interaction, name: str, rewards_exp: int, rewards_coins: int
     ):
@@ -290,7 +290,7 @@ class StageCog(commands.Cog):
             await interaction.followup.send(f"關卡 `{stage_id}` 已刪除。", ephemeral=True)
 
     @admin_group.command(name="requires", description="設定關卡的前置依賴")
-    @app_commands.describe(stage_id="關卡 ID", required_ids="前置關卡 ID，以逗號分隔（留空代表無依賴）")
+    @app_commands.describe(stage_id="關卡 ID", required_ids="前置關卡 ID，以逗號分隔（留空代表無依賴關係）")
     async def admin_requires(
         self, interaction: discord.Interaction, stage_id: int, required_ids: str = ""
     ):
