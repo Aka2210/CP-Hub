@@ -1,9 +1,3 @@
-import json
-from pathlib import Path
-
-STAGES_PATH = Path(__file__).resolve().parents[5] / "static" / "stages.json"
-
-
 class CyclicDependencyError(ValueError):
     pass
 
@@ -12,11 +6,6 @@ class StageGraph:
     def __init__(self, stages: list[dict]):
         self.stages: dict[int, dict] = {s["id"]: s for s in stages}
         self._validate()
-
-    @classmethod
-    def load(cls) -> "StageGraph":
-        stages = json.loads(STAGES_PATH.read_text())
-        return cls(stages)
 
     def _validate(self) -> None:
         for stage_id, stage in self.stages.items():
