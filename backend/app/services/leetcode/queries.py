@@ -38,3 +38,13 @@ query getUserProfile($username: String!) {
   }
 }
 """
+
+# Get recent accepted submissions for a user (up to 20)
+LEETCODE_RECENT_AC_SUBMISSIONS_QUERY = """
+query getRecentAcSubmissions($username: String!, $limit: Int!) {
+  recentAcSubmissionList(username: $username, limit: $limit) {
+    titleSlug
+    timestamp
+  }
+}
+"""

@@ -1,10 +1,12 @@
 import random
+from datetime import datetime
 from typing import Any, Dict, List
 
 import httpx
 
 from backend.app.services.leetcode.queries import (
     LEETCODE_PROBLEM_LIST_QUERY,
+    LEETCODE_RECENT_AC_SUBMISSIONS_QUERY,
     LEETCODE_USER_PROFILE_QUERY,
     LEETCODE_USER_SOLVED_STATS_QUERY,
 )
@@ -129,6 +131,35 @@ class LeetCodeService:
 
             except httpx.RequestError as exc:
                 raise RuntimeError(f"Error occurred while fetching LeetCode solved stats: {exc}")
+
+    async def verify_problem_solved(self, username: str, title_slug: str, after: datetime) -> bool:
+        """Returns True if the user has an AC submission for title_slug after the given datetime."""
+        after_ts = int(after.timestamp())
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(
+                    self.graphql_url,
+                    json={
+                        "query": LEETCODE_RECENT_AC_SUBMISSIONS_QUERY,
+                        "variables": {"username": username, "limit": 20},
+                    },
+                    headers=self.headers,
+                    timeout=10.0,
+                )
+
+                if response.status_code != 200:
+                    raise httpx.HTTPStatusError(
+                        f"LeetCode server returned error: {response.status_code}",
+                        request=response.request,
+                        response=response,
+                    )
+
+                data = response.json()
+                submissions = (data.get("data") or {}).get("recentAcSubmissionList", [])
+                return any(s["titleSlug"] == title_slug and int(s["timestamp"]) >= after_ts for s in submissions)
+
+            except httpx.RequestError as exc:
+                raise RuntimeError(f"Error occurred while verifying LeetCode submission: {exc}")
 
     async def draw_random_problem(self, tags: List[str], difficulty: str) -> Dict[str, Any]:
         """Draws a random LeetCode problem based on specified tags and difficulty, ensuring it's free to access."""
