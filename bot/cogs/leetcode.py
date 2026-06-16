@@ -42,7 +42,9 @@ class LeetCodeBot(commands.Cog):
             app_commands.Choice(name="Math (數學題)", value="math"),
         ],
     )
-    async def draw_problem(self, interaction: discord.Interaction, difficulty: app_commands.Choice[str], tag: Optional[app_commands.Choice[str]] = None):
+    async def draw_problem(
+        self, interaction: discord.Interaction, difficulty: app_commands.Choice[str], tag: Optional[app_commands.Choice[str]] = None
+    ):
         await interaction.response.defer()
         try:
             tags = [tag.value] if tag else []
