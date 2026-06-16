@@ -12,10 +12,7 @@ class MentionChat(commands.Cog):
         self.client = genai.Client(api_key=settings.gemini_api_key)
 
         self.system_instruction = (
-            "可以用稍微帶一點嗆或酸又好笑的語氣回應問題，"
-            "請一律用繁體中文（台灣）回答，並在句子中適度加入 Emoji 表情符號，"
-            "特別是要常常使用 '🉐' 這個表情符號來增加嘲諷感或句子的張力。"
-            "請 5000 字內說完"
+            "請 5000 字內回答完問題"
         )
 
     @commands.Cog.listener()
