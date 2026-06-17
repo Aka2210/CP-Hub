@@ -145,6 +145,7 @@ class StageCog(commands.Cog):
             return
 
         embed = discord.Embed(title="關卡列表", color=discord.Color.blue())
+        embed.set_thumbnail(url="attachment://stage.png")
         for item in items:
             stage = item["stage"]
             if item["completed"]:
@@ -165,7 +166,8 @@ class StageCog(commands.Cog):
                 inline=False,
             )
 
-        await interaction.followup.send(embed=embed)
+        file = discord.File("static/images/stage.png", filename="stage.png")
+        await interaction.followup.send(embed=embed, file=file)
 
     @stage_group.command(name="status", description="查看你目前所有關卡的進度")
     async def status(self, interaction: discord.Interaction):
