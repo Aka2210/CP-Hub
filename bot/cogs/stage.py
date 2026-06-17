@@ -15,9 +15,6 @@ from backend.app.services.stage.service import (
     StageService,
 )
 
-stage_group = app_commands.Group(name="stage", description="關卡挑戰系統")
-admin_group = app_commands.Group(name="admin", description="關卡管理（限管理員）", parent=stage_group)
-
 
 def _is_admin(discord_id: int) -> bool:
     return discord_id in settings.admin_discord_ids
@@ -64,9 +61,7 @@ class VerifyView(discord.ui.View):
         lines = [f"獲得 **{result.problem_rewards['exp']} EXP** 和 **{result.problem_rewards['coins']} 金幣**！"]
 
         if result.stage_complete:
-            lines.append(
-                f"🎉 關卡完成！額外獲得 **{result.stage_rewards['exp']} EXP** 和 **{result.stage_rewards['coins']} 金幣**！"
-            )
+            lines.append(f"🎉 關卡完成！額外獲得 **{result.stage_rewards['exp']} EXP** 和 **{result.stage_rewards['coins']} 金幣**！")
             self.verify.disabled = True
             await interaction.message.edit(view=self)
         else:
@@ -76,6 +71,9 @@ class VerifyView(discord.ui.View):
 
 
 class StageCog(commands.Cog):
+    stage_group = app_commands.Group(name="stage", description="關卡挑戰系統")
+    admin_group = app_commands.Group(name="admin", description="關卡管理（限管理員）", parent=stage_group)
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.service = StageService(LeetCodeService())
@@ -116,11 +114,7 @@ class StageCog(commands.Cog):
             enrolled_ids = {p.stage_id for p in all_progress}
             available = await self.service.available_stages(session, completed_ids, enrolled_ids)
 
-        return [
-            app_commands.Choice(name=s["name"], value=s["id"])
-            for s in available
-            if current.lower() in s["name"].lower()
-        ]
+        return [app_commands.Choice(name=s["name"], value=s["id"]) for s in available if current.lower() in s["name"].lower()]
 
     @stage_group.command(name="list", description="列出所有關卡與解鎖狀態")
     async def list_stages(self, interaction: discord.Interaction):
@@ -147,11 +141,7 @@ class StageCog(commands.Cog):
             elif item["unlocked"]:
                 status = "🔓 可加入"
             else:
-                req_names = [
-                    items[i]["stage"]["name"]
-                    for i, it in enumerate(items)
-                    if it["stage"]["id"] in stage.get("requires", [])
-                ]
+                req_names = [items[i]["stage"]["name"] for i, it in enumerate(items) if it["stage"]["id"] in stage.get("requires", [])]
                 status = f"🔒 需完成：{', '.join(req_names)}"
 
             rewards = stage["rewards"]
@@ -264,9 +254,7 @@ class StageCog(commands.Cog):
 
     @admin_group.command(name="create", description="新增關卡")
     @app_commands.describe(name="關卡名稱", rewards_exp="完成關卡 EXP 獎勵", rewards_coins="完成關卡金幣獎勵")
-    async def admin_create(
-        self, interaction: discord.Interaction, name: str, rewards_exp: int, rewards_coins: int
-    ):
+    async def admin_create(self, interaction: discord.Interaction, name: str, rewards_exp: int, rewards_coins: int):
         if not _is_admin(interaction.user.id):
             await interaction.response.send_message("你沒有權限執行此指令。", ephemeral=True)
             return
@@ -291,9 +279,7 @@ class StageCog(commands.Cog):
 
     @admin_group.command(name="requires", description="設定關卡的前置依賴")
     @app_commands.describe(stage_id="關卡 ID", required_ids="前置關卡 ID，以逗號分隔（留空代表無依賴關係）")
-    async def admin_requires(
-        self, interaction: discord.Interaction, stage_id: int, required_ids: str = ""
-    ):
+    async def admin_requires(self, interaction: discord.Interaction, stage_id: int, required_ids: str = ""):
         if not _is_admin(interaction.user.id):
             await interaction.response.send_message("你沒有權限執行此指令。", ephemeral=True)
             return
@@ -314,9 +300,7 @@ class StageCog(commands.Cog):
                 await stage_def_crud.set_requires(session, stage_id, [])
                 await interaction.followup.send(f"設定失敗（形成循環依賴）：{e}", ephemeral=True)
                 return
-        await interaction.followup.send(
-            f"關卡 `{stage.name}` 的前置依賴已更新為：`{requires or '無'}`", ephemeral=True
-        )
+        await interaction.followup.send(f"關卡 `{stage.name}` 的前置依賴已更新為：`{requires or '無'}`", ephemeral=True)
 
     @admin_group.command(name="add-problem", description="在關卡末尾新增一題")
     @app_commands.describe(
@@ -348,9 +332,7 @@ class StageCog(commands.Cog):
             except stage_def_crud.StageNotFoundError:
                 await interaction.followup.send(f"找不到 ID 為 `{stage_id}` 的關卡。", ephemeral=True)
                 return
-        await interaction.followup.send(
-            f"題目「**{title}**」已加入關卡「{stage.name}」（目前共 {len(stage.problems)} 題）。", ephemeral=True
-        )
+        await interaction.followup.send(f"題目「**{title}**」已加入關卡「{stage.name}」（目前共 {len(stage.problems)} 題）。", ephemeral=True)
 
     @admin_group.command(name="remove-problem", description="移除關卡中的某題（依編號，從 0 開始）")
     @app_commands.describe(stage_id="關卡 ID", problem_index="題目編號（0-indexed）")
@@ -368,9 +350,7 @@ class StageCog(commands.Cog):
             except stage_def_crud.ProblemIndexError as e:
                 await interaction.followup.send(str(e), ephemeral=True)
                 return
-        await interaction.followup.send(
-            f"已移除第 `{problem_index}` 題，關卡「{stage.name}」目前剩 {len(stage.problems)} 題。", ephemeral=True
-        )
+        await interaction.followup.send(f"已移除第 `{problem_index}` 題，關卡「{stage.name}」目前剩 {len(stage.problems)} 題。", ephemeral=True)
 
 
 async def setup(bot: commands.Bot):
