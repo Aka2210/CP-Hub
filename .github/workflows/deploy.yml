@@ -46,6 +46,9 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           {
             echo "Host ${{ secrets.VPS_HOST }}"
+            echo "  HostName ${{ secrets.VPS_HOST }}"
+            echo "  User ${{ secrets.VPS_USER }}"
+            echo "  IdentityFile ~/.ssh/id_rsa"
             echo "  ProxyCommand cloudflared access ssh --hostname %h"
             echo "  StrictHostKeyChecking no"
             echo "  UserKnownHostsFile /dev/null"
