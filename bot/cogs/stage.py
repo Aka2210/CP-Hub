@@ -42,7 +42,7 @@ class VerifyView(discord.ui.View):
             await interaction.response.send_message("只有抽題者可以驗證！", ephemeral=True)
             return
 
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer()
 
         async with AsyncSessionLocal() as session:
             user = await get_user_by_discord_id(session, interaction.user.id)
@@ -63,7 +63,7 @@ class VerifyView(discord.ui.View):
             )
             return
 
-        lines = [f"獲得 **{result.problem_rewards['exp']} EXP** 和 **{result.problem_rewards['coins']} 金幣**！"]
+        lines = [f"{interaction.user.mention} 解題成功！獲得 **{result.problem_rewards['exp']} EXP** 和 **{result.problem_rewards['coins']} 金幣**！"]
 
         if result.stage_complete:
             lines.append(f"🎉 關卡完成！額外獲得 **{result.stage_rewards['exp']} EXP** 和 **{result.stage_rewards['coins']} 金幣**！")
@@ -72,7 +72,7 @@ class VerifyView(discord.ui.View):
         else:
             lines.append("繼續加油！使用 `/stage play` 查看下一題。")
 
-        await interaction.followup.send("\n".join(lines), ephemeral=True)
+        await interaction.followup.send("\n".join(lines))
 
 
 _admin_group = app_commands.Group(name="admin", description="關卡管理（限管理員）")
