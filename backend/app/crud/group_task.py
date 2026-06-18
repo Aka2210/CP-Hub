@@ -86,23 +86,37 @@ async def get_claimed_incomplete_by_user(session: AsyncSession, task_id: uuid.UU
     return list(result.scalars().all())
 
 
-async def mark_claimed(session: AsyncSession, problem: GroupTaskProblem, user_id: uuid.UUID) -> None:
-    problem.claimed_by = user_id
-    problem.claimed_at = datetime.now(timezone.utc)
+async def mark_claimed(session: AsyncSession, problem_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    """Atomically claims the problem. Returns False if someone else claimed/completed it first."""
+    result = await session.execute(
+        update(GroupTaskProblem)
+        .where(GroupTaskProblem.id == problem_id, GroupTaskProblem.claimed_by.is_(None), GroupTaskProblem.is_completed.is_(False))
+        .values(claimed_by=user_id, claimed_at=datetime.now(timezone.utc))
+    )
     await session.commit()
+    return result.rowcount > 0
 
 
-async def mark_unclaimed(session: AsyncSession, problem: GroupTaskProblem) -> None:
-    problem.claimed_by = None
-    problem.claimed_at = None
+async def mark_unclaimed(session: AsyncSession, problem_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    """Atomically releases the claim. Returns False if it's no longer claimed by this user."""
+    result = await session.execute(
+        update(GroupTaskProblem)
+        .where(GroupTaskProblem.id == problem_id, GroupTaskProblem.claimed_by == user_id, GroupTaskProblem.is_completed.is_(False))
+        .values(claimed_by=None, claimed_at=None)
+    )
     await session.commit()
+    return result.rowcount > 0
 
 
-async def mark_completed(session: AsyncSession, problem: GroupTaskProblem, user_id: uuid.UUID) -> None:
-    problem.is_completed = True
-    problem.completed_by = user_id
-    problem.completed_at = datetime.now(timezone.utc)
+async def mark_completed(session: AsyncSession, problem_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    """Atomically marks the problem completed. Returns False if it's no longer claimed by this user or already done."""
+    result = await session.execute(
+        update(GroupTaskProblem)
+        .where(GroupTaskProblem.id == problem_id, GroupTaskProblem.claimed_by == user_id, GroupTaskProblem.is_completed.is_(False))
+        .values(is_completed=True, completed_by=user_id, completed_at=datetime.now(timezone.utc))
+    )
     await session.commit()
+    return result.rowcount > 0
 
 
 async def finalize_task(session: AsyncSession, task_id: uuid.UUID, status: str) -> GroupTask | None:

@@ -137,8 +137,8 @@ class GroupTaskService:
             elif problem.claimed_by is not None:
                 results[code] = "已被他人認領"
             else:
-                await group_task_crud.mark_claimed(session, problem, user.id)
-                results[code] = "認領成功"
+                claimed = await group_task_crud.mark_claimed(session, problem.id, user.id)
+                results[code] = "認領成功" if claimed else "已被他人搶先認領"
         return results
 
     async def unclaim(self, session: AsyncSession, task: GroupTask, user: User, codes: list[str]) -> dict[str, str]:
@@ -153,8 +153,8 @@ class GroupTaskService:
             elif problem.claimed_by != user.id:
                 results[code] = "你沒有認領此題"
             else:
-                await group_task_crud.mark_unclaimed(session, problem)
-                results[code] = "取消認領成功"
+                unclaimed = await group_task_crud.mark_unclaimed(session, problem.id, user.id)
+                results[code] = "取消認領成功" if unclaimed else "取消認領失敗，請重新查詢狀態"
         return results
 
     async def get_verifiable_problems(self, session: AsyncSession, task: GroupTask, user: User) -> list[GroupTaskProblem]:
@@ -187,8 +187,12 @@ class GroupTaskService:
                 result.failed.append(FailedProblem(code=code, reason="尚未偵測到 AC 提交"))
                 continue
 
+            completed = await group_task_crud.mark_completed(session, problem.id, user.id)
+            if not completed:
+                result.failed.append(FailedProblem(code=code, reason="題目狀態已改變，請重新查詢後再試"))
+                continue
+
             rewards = DIFFICULTY_REWARDS[problem.difficulty]
-            await group_task_crud.mark_completed(session, problem, user.id)
             await award_rewards(session, user.stats, rewards["exp"], rewards["coins"])
             result.succeeded.append(VerifiedProblem(problem=problem, exp=rewards["exp"], coins=rewards["coins"]))
 

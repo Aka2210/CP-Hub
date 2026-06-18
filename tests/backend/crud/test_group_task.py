@@ -93,7 +93,7 @@ async def test_claim_unclaim_and_complete_cycle(cleanup):
 
     async with AsyncSessionLocal() as session:
         [problem] = await get_problems_by_codes(session, task.id, ["E1"])
-        await mark_claimed(session, problem, user.id)
+        assert await mark_claimed(session, problem.id, user.id) is True
 
     async with AsyncSessionLocal() as session:
         [problem] = await get_problems_by_codes(session, task.id, ["E1"])
@@ -103,14 +103,14 @@ async def test_claim_unclaim_and_complete_cycle(cleanup):
         claimed = await get_claimed_incomplete_by_user(session, task.id, user.id)
         assert {p.code for p in claimed} == {"E1"}
 
-        await mark_unclaimed(session, problem)
+        assert await mark_unclaimed(session, problem.id, user.id) is True
 
     async with AsyncSessionLocal() as session:
         [problem] = await get_problems_by_codes(session, task.id, ["E1"])
         assert problem.claimed_by is None
 
-        await mark_claimed(session, problem, user.id)
-        await mark_completed(session, problem, user.id)
+        assert await mark_claimed(session, problem.id, user.id) is True
+        assert await mark_completed(session, problem.id, user.id) is True
 
     async with AsyncSessionLocal() as session:
         [problem] = await get_problems_by_codes(session, task.id, ["E1"])
@@ -119,6 +119,31 @@ async def test_claim_unclaim_and_complete_cycle(cleanup):
 
         claimed = await get_claimed_incomplete_by_user(session, task.id, user.id)
         assert claimed == []
+
+
+@pytest.mark.asyncio
+async def test_mark_claimed_rejects_second_claim_on_same_problem(cleanup):
+    """Simulates two users racing to claim the same problem: only the first should win."""
+    task = await _make_task(cleanup)
+
+    async with AsyncSessionLocal() as session:
+        user_a = await upsert_account_links(session, discord_id=DISCORD_ID_A, username="grouptask_crud_race_a", leetcode_id="race_a")
+
+    async with AsyncSessionLocal() as session:
+        [problem] = await get_problems_by_codes(session, task.id, ["E1"])
+        first_claim = await mark_claimed(session, problem.id, user_a.id)
+
+    # A second claim attempt on the same problem (as if by another user) must lose, not overwrite.
+    async with AsyncSessionLocal() as session:
+        [problem] = await get_problems_by_codes(session, task.id, ["E1"])
+        second_claim = await mark_claimed(session, problem.id, user_a.id)
+
+    assert first_claim is True
+    assert second_claim is False
+
+    async with AsyncSessionLocal() as session:
+        [problem] = await get_problems_by_codes(session, task.id, ["E1"])
+    assert problem.claimed_by == user_a.id
 
 
 @pytest.mark.asyncio
