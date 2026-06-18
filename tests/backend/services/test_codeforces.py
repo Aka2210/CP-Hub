@@ -31,3 +31,18 @@ async def test_get_rating_for_nonexistent_user(codeforces_service):
     rating = await codeforces_service.get_rating("this-handle-does-not-exist-12345")
 
     assert rating is None
+
+
+@pytest.mark.asyncio
+async def test_get_solved_count_for_real_user(codeforces_service):
+    solved = await codeforces_service.get_solved_count("tourist")
+
+    assert isinstance(solved, int)
+    assert solved > 0
+
+
+@pytest.mark.asyncio
+async def test_get_solved_count_for_nonexistent_user(codeforces_service):
+    solved = await codeforces_service.get_solved_count("this-handle-does-not-exist-12345")
+
+    assert solved is None
