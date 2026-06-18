@@ -106,6 +106,9 @@ class StageCog(commands.Cog):
             try:
                 await self.service.enroll(session, user, stage_id)
                 stage = await self.service.get_stage(session, stage_id)
+            except stage_def_crud.StageNotFoundError:
+                await interaction.followup.send(f"找不到 ID 為 `{stage_id}` 的關卡，請用 `/stage list` 查看可用關卡。")
+                return
             except AlreadyEnrolledError:
                 await interaction.followup.send("你已經加入這個關卡了。")
                 return
