@@ -32,6 +32,7 @@ async def cleanup():
 
 # ── create / get ───────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_create_stage():
     async with AsyncSessionLocal() as session:
@@ -87,6 +88,7 @@ async def test_get_all_stages_multiple():
 
 # ── delete ─────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_delete_stage_success():
     async with AsyncSessionLocal() as session:
@@ -109,6 +111,7 @@ async def test_delete_stage_not_found():
 
 
 # ── set_requires ───────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_set_requires():
@@ -143,6 +146,7 @@ async def test_set_requires_not_found():
 
 
 # ── add_problem ────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_add_problem():
@@ -179,6 +183,7 @@ async def test_add_problem_not_found():
 
 
 # ── remove_problem ─────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_remove_problem():
