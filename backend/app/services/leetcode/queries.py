@@ -25,6 +25,24 @@ query problemsetQuestionListV2(
 }
 """
 
+LEETCODE_PROBLEM_TOTAL_QUERY = """
+query problemsetQuestionList(
+  $categorySlug: String,
+  $limit: Int,
+  $skip: Int,
+  $filters: QuestionListFilterInput
+) {
+  problemsetQuestionList: questionList(
+    categorySlug: $categorySlug
+    limit: $limit
+    skip: $skip
+    filters: $filters
+  ) {
+    total: totalNum
+  }
+}
+"""
+
 # Check whether a LeetCode account with the given username exists
 LEETCODE_USER_PROFILE_QUERY = """
 query getUserProfile($username: String!) {
