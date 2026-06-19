@@ -230,3 +230,13 @@ class LeetCodeService:
         chosen_problem["url"] = f"https://leetcode.com/problems/{chosen_problem['titleSlug']}/"
 
         return chosen_problem
+
+    async def draw_problems(self, difficulty: str, count: int) -> List[Dict[str, Any]]:
+        """Draws up to `count` unique free LeetCode problems of the given difficulty, no tag filter."""
+        questions = await self.get_problem_list(tags=[], difficulty=difficulty)
+        chosen = random.sample(questions, min(count, len(questions)))
+
+        for question in chosen:
+            question["url"] = f"https://leetcode.com/problems/{question['titleSlug']}/"
+
+        return chosen
