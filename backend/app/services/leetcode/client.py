@@ -20,7 +20,7 @@ class LeetCodeService:
             "content-type": "application/json",
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         }
-    
+
     async def get_problem_total(self, tags: List[str], difficulty: str) -> int:
         """Fetches the total number of LeetCode problems matching the given tags and difficulty."""
 
@@ -51,9 +51,7 @@ class LeetCodeService:
                 )
 
                 if response.status_code != 200:
-                    raise RuntimeError(
-                        f"LeetCode server returned error {response.status_code}: {response.text}"
-                    )
+                    raise RuntimeError(f"LeetCode server returned error {response.status_code}: {response.text}")
 
                 data = response.json()
 
@@ -64,7 +62,7 @@ class LeetCodeService:
 
             except httpx.RequestError as exc:
                 raise RuntimeError(f"Error occurred while fetching problem total: {exc}")
-    
+
     async def get_problem_list(self, tags: List[str], difficulty: str, limit: int = 100, skip: int = 0) -> List[Dict[str, Any]]:
         """Fetches a list of LeetCode problems based on specified tags and difficulty."""
 
@@ -95,9 +93,7 @@ class LeetCodeService:
                 )
 
                 if response.status_code != 200:
-                    raise RuntimeError(
-                        f"LeetCode server returned error {response.status_code}: {response.text}"
-                    )
+                    raise RuntimeError(f"LeetCode server returned error {response.status_code}: {response.text}")
 
                 data = response.json()
 
@@ -205,13 +201,19 @@ class LeetCodeService:
             except httpx.RequestError as exc:
                 raise RuntimeError(f"Error occurred while verifying LeetCode submission: {exc}")
 
-    async def draw_random_problem(self, tags: List[str], difficulty: str, choosing_window_size: int = 100, max_skip: int = 3000,) -> Dict[str, Any]:
+    async def draw_random_problem(
+        self,
+        tags: List[str],
+        difficulty: str,
+        choosing_window_size: int = 100,
+        max_skip: int = 3000,
+    ) -> Dict[str, Any]:
         """Draws a random LeetCode problem based on specified tags and difficulty, ensuring it's free to access."""
         total = await self.get_problem_total(tags, difficulty)
-        
+
         if total == 0:
             raise ValueError(f"No problems found for tags: {tags} and difficulty: {difficulty}")
-        
+
         window_size = min(choosing_window_size, total)
         max_skip = max(total - window_size, 0)
         skip = random.randint(0, max_skip)

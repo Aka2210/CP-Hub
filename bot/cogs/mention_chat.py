@@ -11,9 +11,7 @@ class MentionChat(commands.Cog):
         self.bot = bot
         self.client = genai.Client(api_key=settings.gemini_api_key)
 
-        self.system_instruction = (
-            "請 5000 字內回答完問題"
-        )
+        self.system_instruction = "請 5000 字內回答完問題"
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
