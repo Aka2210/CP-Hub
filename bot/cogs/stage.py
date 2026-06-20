@@ -12,13 +12,13 @@ from backend.app.services.leetcode.client import LeetCodeService
 from backend.app.services.stage.service import (
     AlreadyEnrolledError,
     DependencyNotMetError,
-    NoPlatformAccountError,
     NotEnrolledError,
     StageService,
 )
 from backend.app.services.stage.verifiers.atcoder import AtCoderVerifier
 from backend.app.services.stage.verifiers.codeforces import CodeforcesVerifier
 from backend.app.services.stage.verifiers.leetcode import LeetCodeVerifier
+from bot.views.stage_verify import StageVerifyView
 
 
 def _is_admin(discord_id: int) -> bool:
@@ -27,52 +27,6 @@ def _is_admin(discord_id: int) -> bool:
 
 def _platform_label(platform: str) -> str:
     return platform.capitalize()
-
-
-class VerifyView(discord.ui.View):
-    def __init__(self, stage_id: int, original_user_id: int, service: StageService):
-        super().__init__(timeout=300)
-        self.stage_id = stage_id
-        self.original_user_id = original_user_id
-        self.service = service
-
-    @discord.ui.button(label="完成驗證", style=discord.ButtonStyle.green, emoji="✅")
-    async def verify(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.original_user_id:
-            await interaction.response.send_message("只有抽題者可以驗證！", ephemeral=True)
-            return
-
-        await interaction.response.defer()
-
-        async with AsyncSessionLocal() as session:
-            user = await get_user_by_discord_id(session, interaction.user.id)
-            if user is None:
-                await interaction.followup.send("找不到你的帳號，請先用 `/account register` 註冊。", ephemeral=True)
-                return
-
-            try:
-                result = await self.service.verify_and_advance(session, user, self.stage_id)
-            except (NotEnrolledError, NoPlatformAccountError) as e:
-                await interaction.followup.send(str(e), ephemeral=True)
-                return
-
-        if not result.solved:
-            await interaction.followup.send(
-                "尚未看到你的 AC 提交，請確認已成功提交後再試一次。",
-                ephemeral=True,
-            )
-            return
-
-        lines = [f"{interaction.user.mention} 解題成功！獲得 **{result.problem_rewards['exp']} EXP** 和 **{result.problem_rewards['coins']} 金幣**！"]
-
-        if result.stage_complete:
-            lines.append(f"🎉 關卡完成！額外獲得 **{result.stage_rewards['exp']} EXP** 和 **{result.stage_rewards['coins']} 金幣**！")
-            self.verify.disabled = True
-            await interaction.message.edit(view=self)
-        else:
-            lines.append("繼續加油！使用 `/stage play` 查看下一題。")
-
-        await interaction.followup.send("\n".join(lines))
 
 
 _admin_group = app_commands.Group(name="admin", description="關卡管理（限管理員）")
@@ -226,8 +180,9 @@ class StageCog(commands.Cog):
         )
         embed.set_footer(text=f"關卡：{stage['name']}")
 
-        view = VerifyView(stage_id=stage_id, original_user_id=interaction.user.id, service=self.service)
-        await interaction.followup.send(embed=embed, view=view)
+        view = StageVerifyView(stage_id=stage_id, original_user_id=interaction.user.id, service=self.service)
+        message = await interaction.followup.send(embed=embed, view=view)
+        view.message = message
 
     @play.autocomplete("stage_id")
     async def play_autocomplete(self, interaction: discord.Interaction, current: str):

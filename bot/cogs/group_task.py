@@ -18,6 +18,7 @@ from backend.app.services.group_task.service import (
     RecapData,
 )
 from backend.app.services.leetcode.client import LeetCodeService
+from bot.views.group_task_verify import GroupTaskVerifyView
 
 logger = logging.getLogger(__name__)
 
@@ -111,33 +112,6 @@ def _build_recap_embed(recap: RecapData) -> discord.Embed:
         lines.append(f"🎁 加成獎勵：每位貢獻者 +{recap.bonus_exp} EXP / +{recap.bonus_coins} 金幣")
 
     return discord.Embed(title=title, description="\n".join(lines), color=color)
-
-
-class VerifySelect(discord.ui.Select):
-    def __init__(self, cog: "GroupTaskCog", problems: list[GroupTaskProblem]):
-        options = [discord.SelectOption(label=f"{p.code} {p.title}"[:100], value=p.code) for p in problems[:25]]
-        super().__init__(placeholder="選擇要驗證的題目（可多選）", min_values=1, max_values=len(options), options=options)
-        self.cog = cog
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-        await self.cog.handle_verify_selection(interaction, self.values)
-
-
-class VerifyView(discord.ui.View):
-    def __init__(self, cog: "GroupTaskCog", problems: list[GroupTaskProblem]):
-        super().__init__(timeout=300)
-        self.message: discord.Message | None = None
-        self.add_item(VerifySelect(cog, problems))
-
-    async def on_timeout(self):
-        for child in self.children:
-            child.disabled = True
-        if self.message is not None:
-            try:
-                await self.message.edit(view=self)
-            except discord.HTTPException:
-                pass
 
 
 class GroupTaskCog(commands.Cog):
@@ -272,7 +246,11 @@ class GroupTaskCog(commands.Cog):
             await interaction.followup.send("你目前沒有認領中尚未完成的題目，請先用 `/grouptask claim` 認領題目。", ephemeral=True)
             return
 
-        view = VerifyView(self, problems)
+        view = GroupTaskVerifyView(
+            handler=self,
+            owner_id=interaction.user.id,
+            problems=problems,
+        )
         message = await interaction.followup.send("請選擇要驗證的題目：", view=view, ephemeral=True)
         view.message = message
 
